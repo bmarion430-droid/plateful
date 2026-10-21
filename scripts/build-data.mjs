@@ -37,15 +37,19 @@ export function canonCode(code) {
   const d = String(code || "").replace(/\D/g, "").replace(/^0+/, "");
   return d.length >= 6 && d.length <= 14 ? d : null;
 }
+const mem = () => Math.round(process.memoryUsage().heapUsed / 1048576) + " MB heap";
 export const shardOf = (key) => key.padStart(4, "0").slice(-4, -1);
 const r1 = (n) => Math.round(n * 10) / 10;
+// Strings cut from a CSV chunk keep the whole chunk alive in V8 (sliced strings), which made the
+// Branded import hold the entire ingredients file in memory. Store standalone copies instead.
+const own = (s) => (s ? Buffer.from(String(s), "utf8").toString("utf8") : "");
 const num = (s) => { if (s === undefined || s === null || s === "") return NaN; return parseFloat(s); };
 function tidy(s) {
   s = String(s || "").replace(/\s+/g, " ").trim();
   if (s.length > 3 && s === s.toUpperCase() && /[A-Z]/.test(s)) {
     s = s.toLowerCase().replace(/(^|[\s\-\/(&,])([a-z])/g, (m, p, c) => p + c.toUpperCase());
   }
-  return s.slice(0, 90);
+  return own(s.slice(0, 90));
 }
 function fmtAmount(a) {
   const n = parseFloat(a);
@@ -92,7 +96,7 @@ async function genericFoods(zipPath, dataType, srcTag) {
     await readDelimited(await zip.stream("food.csv"), (r, hd) => {
       h ||= columns(hd, ["fdc_id", "data_type", "description"], "food.csv");
       if (r[h.data_type] !== dataType) return;
-      foods.set(r[h.fdc_id], { name: tidy(r[h.description]), nut: {}, portions: [] });
+      foods.set(r[h.fdc_id], { name: tidy(r[h.description]), nut: new Map(), portions: [] });
     });
     h = null;
     await readDelimited(await zip.stream("food_nutrient.csv"), (r, hd) => {
@@ -100,7 +104,7 @@ async function genericFoods(zipPath, dataType, srcTag) {
       const f = foods.get(r[h.fdc_id]);
       if (!f) return;
       const id = +r[h.nutrient_id];
-      if (WANT.has(id)) f.nut[id] = num(r[h.amount]);
+      if (WANT.has(id)) f.nut.set(id, num(r[h.amount]));
     });
     const units = new Map();
     if (zip.has("measure_unit.csv")) {
@@ -124,15 +128,15 @@ async function genericFoods(zipPath, dataType, srcTag) {
           const mod = h.modifier >= 0 ? r[h.modifier].trim() : "";
           label = [fmtAmount(r[h.amount]), unit === "undetermined" ? "" : unit, /^\d+$/.test(mod) ? "" : mod].filter(Boolean).join(" ");
         }
-        label = label.replace(/\s+/g, " ").slice(0, 40);
+        label = own(label.replace(/\s+/g, " ").slice(0, 40));
         if (label && f.portions.length < 6 && !f.portions.some((p) => p[0] === label)) f.portions.push([label, r1(g)]);
       });
     }
     const out = [];
     for (const f of foods.values()) {
-      const pick = (ids) => { for (const id of ids) if (isFinite(f.nut[id])) return f.nut[id]; return NaN; };
+      const pick = (ids) => { for (const id of ids) if (isFinite(f.nut.get(id))) return f.nut.get(id); return NaN; };
       let kcal = pick(N.kcal);
-      if (!isFinite(kcal) && isFinite(f.nut[1062])) kcal = f.nut[1062] / 4.184;
+      if (!isFinite(kcal) && isFinite(f.nut.get(1062))) kcal = f.nut.get(1062) / 4.184;
       if (!isFinite(kcal) || !f.name) continue;
       const p = pick(N.p), c = pick(N.c), fat = pick(N.f);
       out.push([f.name, r1(kcal), r1(p || 0), r1(c || 0), r1(fat || 0), f.portions, srcTag]);
@@ -161,11 +165,11 @@ async function brandedBarcodes(zipPath, put) {
         fdc,
         brand: tidy((h.brand_name >= 0 && r[h.brand_name]) || (h.brand_owner >= 0 ? r[h.brand_owner] : "")),
         ss: h.serving_size >= 0 ? num(r[h.serving_size]) : NaN,
-        su: h.serving_size_unit >= 0 ? r[h.serving_size_unit].trim().toLowerCase() : "",
-        hh: h.household_serving_fulltext >= 0 ? r[h.household_serving_fulltext].trim() : "",
+        su: h.serving_size_unit >= 0 ? own(r[h.serving_size_unit].trim().toLowerCase()) : "",
+        hh: h.household_serving_fulltext >= 0 ? own(r[h.household_serving_fulltext].trim().slice(0, 30)) : "",
       });
     });
-    log(`branded: ${byKey.size} barcodes`);
+    log(`branded: ${byKey.size} barcodes (${mem()})`);
     const wanted = new Map();
     for (const [key, v] of byKey) {
       v.key = key;
@@ -177,27 +181,32 @@ async function brandedBarcodes(zipPath, put) {
       const v = wanted.get(r[h.fdc_id]);
       if (v) v.name = tidy(r[h.description]);
     });
+    log(`branded: names read (${mem()})`);
     h = null;
-    const NUTS = new Set([1008, 1003, 1004, 1005, 1062]);
+    // Fixed slots, not an object keyed by nutrient id: V8 stores {1008: x} as a ~1,000-slot array.
+    const SLOT = new Map([[1008, 0], [1003, 1], [1004, 2], [1005, 3], [1062, 4]]);
     await readDelimited(await zip.stream("food_nutrient.csv"), (r, hd) => {
       h ||= columns(hd, ["fdc_id", "nutrient_id", "amount"], "food_nutrient.csv");
       const v = wanted.get(r[h.fdc_id]);
       if (!v) return;
       const id = +r[h.nutrient_id];
-      if (NUTS.has(id)) (v.n ||= {})[id] = num(r[h.amount]);
+      const slot = SLOT.get(id);
+      if (slot !== undefined) (v.n ||= [NaN, NaN, NaN, NaN, NaN])[slot] = num(r[h.amount]);
     });
+    log(`branded: nutrients read (${mem()})`);
     let n = 0;
     for (const v of wanted.values()) {
       if (!v.name || !v.n) continue;
-      let kcal = v.n[1008];
-      if (!isFinite(kcal) && isFinite(v.n[1062])) kcal = v.n[1062] / 4.184;
+      const [nk, np, nf, nc, nkj] = v.n;
+      let kcal = nk;
+      if (!isFinite(kcal) && isFinite(nkj)) kcal = nkj / 4.184;
       if (!isFinite(kcal)) continue;
       // USDA branded values are per 100 g / 100 ml; convert to the label serving when we can.
       const perUnit = ["g", "grm", "gm", "ml", "mlt"].includes(v.su) && v.ss > 0;
       const factor = perUnit ? v.ss / 100 : 1;
       const unitLabel = v.su === "grm" || v.su === "gm" ? "g" : v.su === "mlt" ? "ml" : v.su;
       const serving = perUnit ? (v.hh && !/^\s*$/.test(v.hh) ? `${v.hh} (${r1(v.ss)} ${unitLabel})` : `${r1(v.ss)} ${unitLabel}`) : "100 g";
-      put(v.key, [v.name, v.brand, serving.slice(0, 40), r1(kcal * factor), r1((v.n[1003] || 0) * factor), r1((v.n[1005] || 0) * factor), r1((v.n[1004] || 0) * factor), "u"]);
+      put(v.key, [v.name, v.brand, serving.slice(0, 40), r1(kcal * factor), r1((np || 0) * factor), r1((nc || 0) * factor), r1((nf || 0) * factor), "u"]);
       n++;
     }
     return n;
@@ -293,6 +302,8 @@ async function rebuild() {
   // 2. Barcodes
   const shards = new Map();
   const put = (key, val) => {
+    key = own(key);
+    val = val.map((x) => (typeof x === "string" ? own(x) : x));
     const s = shardOf(key);
     let m = shards.get(s);
     if (!m) shards.set(s, (m = new Map()));
