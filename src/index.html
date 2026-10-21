@@ -192,9 +192,7 @@ dialog[open]{animation:up .25s ease-out}
 .toast{position:fixed;left:50%;bottom:calc(var(--tabh) + 26px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:99px;font-size:.88rem;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;z-index:10;max-width:calc(100vw - 32px);text-align:center}
 .toast.show{opacity:1}
 .confirm{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-/* home: + button, coach card, inline weigh-in */
-.fab{position:fixed;right:max(16px,calc(50vw - 224px));bottom:calc(var(--tabh) + 26px + env(safe-area-inset-bottom,0px));z-index:6;border:0;border-radius:99px;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:1rem;padding:14px 20px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
-.fab b{font-size:1.4rem;line-height:1;font-weight:700}
+/* home: coach card, inline weigh-in */
 .coach{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:10px}
 .coach h3{margin:0;font-family:var(--f-display);font-weight:800;font-stretch:85%;font-size:1.15rem}
 .coach p{margin:0;font-size:.92rem;line-height:1.45}
@@ -411,8 +409,6 @@ dialog[open]{animation:up .25s ease-out}
     </div>
   </section>
 </div>
-
-<button class="fab" id="fab" aria-label="Log food"><b aria-hidden="true">+</b>Log food</button>
 
 <div class="tabbar">
   <nav aria-label="Main">

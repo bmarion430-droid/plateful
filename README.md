@@ -8,7 +8,7 @@ A phone-first calorie, macro, water and weight tracker that you install on your 
 
 ## Built for fast logging
 
-- **Log food** button on the home screen, and **+ Add** next to each meal.
+- **+ Add** next to each meal on the home screen opens Enter Meal on that meal.
 - Search opens on **Your meals**, **Often at this meal**, **Recent** and **Your foods & recipes**. A **+** on any of them logs it in one tap with the amount you used last time.
 - **Repeat yesterday's breakfast** (or whichever meal) in one tap.
 - **Save a meal** (2+ foods) and log it in one tap later.

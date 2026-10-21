@@ -89,7 +89,6 @@ function showTab(t) {
   tab = t;
   ["today", "meal", "weight"].forEach(x => { $("scr-" + x).hidden = x !== t; });
   document.querySelectorAll(".tabbar button").forEach(b => { if (b.dataset.tab === t) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
-  $("fab").hidden = t !== "today";
   try { sessionStorage.setItem("plateful.tab", t); } catch {}
   window.scrollTo(0, 0);
   render();
@@ -100,7 +99,6 @@ function goLog(m) {
   mode = "search"; $("q").value = ""; showTab("meal");
   setTimeout(() => $("q").focus(), 50);
 }
-$("fab").onclick = () => goLog();
 
 // ---------- Nutrition Facts (home) ----------
 function renderToday() {
@@ -138,7 +136,7 @@ function renderToday() {
   const w = state.weights[cur];
   $("wtToday").textContent = w != null ? w + " " + unit() : "Not logged";
   const es = d.entries;
-  $("ingSummary").textContent = es.length ? es.map(e => e.name).join(", ") + "." : "nothing logged yet. Tap Log food to add something.";
+  $("ingSummary").textContent = es.length ? es.map(e => e.name).join(", ") + "." : "nothing logged yet. Tap Enter Meal, or + Add next to a meal.";
   $("ingList").innerHTML = MEALS.map(m => {
     const xs = es.filter(e => e.meal === m);
     const head = '<li class="mealhdr">' + m + (xs.length ? " · " + fmt(xs.reduce((a, e) => a + e.kcal * e.qty, 0)) + " kcal" : "") + '<button type="button" class="mealadd" data-addmeal="' + m + '">+ Add</button></li>';
