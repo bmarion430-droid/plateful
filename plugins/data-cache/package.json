@@ -1,0 +1,6 @@
+{
+  "name": "plateful-data-cache-plugin",
+  "private": true,
+  "type": "commonjs",
+  "main": "index.js"
+}

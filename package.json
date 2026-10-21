@@ -1,0 +1,23 @@
+{
+  "name": "plateful",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plateful: calorie, macro and weight tracker with a free offline food database.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:data": "node scripts/build-data.mjs",
+    "build:nodata": "SKIP_DATA=1 node scripts/build.mjs",
+    "test": "node tests/coach.test.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@zxing/library": "0.21.3",
+    "yauzl": "2.10.0"
+  },
+  "devDependencies": {
+    "@netlify/functions": "6.0.2"
+  }
+}

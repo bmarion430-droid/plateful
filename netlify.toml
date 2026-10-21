@@ -1,0 +1,40 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Rebuild the food data when the cached copy is older than this many days.
+  DATA_MAX_AGE_DAYS = "25"
+  # Open Food Facts products to bundle, by country tag. Use "all" for every country, "none" to skip.
+  OFF_COUNTRIES = "en:united-states,en:canada"
+  # Stop the Open Food Facts import after this many minutes so the build stays under Netlify's limit.
+  OFF_TIME_BUDGET_MIN = "8"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Keeps the downloaded/processed food data between builds.
+[[plugins]]
+  package = "./plugins/data-cache"
+
+# Nutrition data lives under a versioned folder, so it can be cached forever.
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"

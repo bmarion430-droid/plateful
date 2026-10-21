@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Plateful</title>
+<meta name="description" content="Track calories, macros, water and weight.">
+<meta name="theme-color" content="#eef1ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c1210" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Plateful">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" href="/icons/icon-192.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script>window.PLATEFUL = /*PLATEFUL_CONFIG*/null;</script>
+<style>
+/* Layout: phone app shell. Scrolling screen above a fixed bottom tab bar; the Nutrition Facts label is home. Plots and the scanner open as bottom sheets. */
+:root{
+  --bg:#eef1ee; --surface:#ffffff; --ink:#15201b; --muted:#5d6b64; --rule:#15201b; --line:#d9e0db; --fill:#f5f7f5;
+  --accent:#7a2e57; --accent-ink:#ffffff; --accent-soft:#f3e6ee;
+  --protein:#1f7a8c; --carbs:#b07c0c; --fat:#7a2e57; --water:#3a72c4; --weight:#1f7a8c;
+  --good:#2f7d4f; --over:#8a6a1c; --danger:#b3392f; --bar:rgba(255,255,255,.86);
+  --f-display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --f-body:"Public Sans",-apple-system,system-ui,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:12px; --tabh:58px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0c1210; --surface:#161e1b; --ink:#e7eee9; --muted:#9aa8a1; --rule:#e7eee9; --line:#2a3632; --fill:#1d2724;
+  --accent:#e08ab6; --accent-ink:#1a0c13; --accent-soft:#33202b;
+  --protein:#5cc0d2; --carbs:#e2b54a; --fat:#e08ab6; --water:#7aa6ea; --weight:#5cc0d2;
+  --good:#6cc28f; --over:#d9b55a; --danger:#f07b70; --bar:rgba(22,30,27,.86); color-scheme:dark}}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;padding-inline:max(16px,env(safe-area-inset-left,0px));padding-top:env(safe-area-inset-top,0px)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+img{max-width:100%}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.app{max-width:480px;margin:0 auto;padding-bottom:calc(var(--tabh) + 28px + env(safe-area-inset-bottom,0px))}
+
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-block:18px 12px}
+.top h1{margin:0;font-family:var(--f-display);font-weight:900;font-stretch:75%;font-size:2.1rem;line-height:1;letter-spacing:-.01em}
+.top .eyebrow{display:block;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.pill{border:0;background:var(--accent);color:var(--accent-ink);border-radius:99px;padding:8px 14px;font-weight:700;font-size:.9rem;display:inline-flex;align-items:center;gap:6px}
+.pill svg{width:16px;height:16px}
+.icon{border:1px solid var(--line);background:var(--surface);border-radius:99px;width:38px;height:38px;display:grid;place-items:center;flex:0 0 auto}
+.icon svg{width:18px;height:18px}
+.screen{display:grid;gap:16px}
+
+.datenav{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:4px}
+.datenav button{border:0;background:none;width:36px;height:36px;border-radius:99px;font-size:1.3rem;line-height:1}
+.datenav button:active{background:var(--fill)}
+.datenav .d{text-align:center;font-weight:700;font-size:.95rem}
+.datenav .d small{display:block;font-weight:400;color:var(--muted);font-size:.75rem}
+.banner{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between;background:var(--accent-soft);border-radius:var(--r);padding:10px 14px;font-size:.85rem}
+.banner button{border:0;background:none;color:var(--accent);font-weight:700;text-decoration:underline;padding:0}
+
+.facts{background:var(--surface);border:2px solid var(--rule);padding:10px 12px 12px}
+.facts h2{margin:0;font-family:var(--f-display);font-weight:900;font-stretch:62%;font-size:3rem;line-height:.92;letter-spacing:-.01em}
+.facts .sub{display:flex;justify-content:space-between;gap:8px;font-size:.85rem;border-bottom:10px solid var(--rule);padding-block:4px 6px}
+.cal-row{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:5px solid var(--rule);padding-block:6px}
+.cal-row .lbl{font-family:var(--f-display);font-weight:900;font-size:1.6rem;font-stretch:80%;line-height:1}
+.cal-row .lbl small{display:block;font-family:var(--f-body);font-weight:600;font-size:.78rem;margin-top:3px}
+.cal-row .big{font-family:var(--f-display);font-weight:900;font-size:3.2rem;line-height:.9;font-stretch:80%}
+.meter{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-block:10px 4px}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.meter.over i{background:var(--over)}
+.eq{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding-block:8px;border-bottom:1px solid var(--rule)}
+.eq b{display:block;color:var(--ink);font-family:var(--f-mono);font-size:1.05rem;letter-spacing:0;font-weight:600}
+.eq .over b{color:var(--over)} .eq .left b{color:var(--good)}
+.fact-hdr{display:flex;justify-content:flex-end;font-size:.72rem;font-weight:700;border-bottom:1px solid var(--rule);padding-block:6px 2px}
+.macro{display:grid;grid-template-columns:1fr auto;gap:3px 8px;border-bottom:1px solid var(--rule);padding-block:7px}
+.macro .n{font-weight:700}
+.macro .n span{font-weight:400;font-family:var(--f-mono);font-size:.85rem;margin-left:4px}
+.macro .pct{font-weight:700;font-family:var(--f-mono)}
+.macro .bar{grid-column:1/-1;height:5px;background:var(--line);border-radius:99px;overflow:hidden}
+.macro .bar i{display:block;height:100%;border-radius:99px;transition:width .3s}
+.water{padding-top:10px;border-top:5px solid var(--rule);margin-top:-1px}
+.water .t{display:flex;justify-content:space-between;align-items:baseline;font-weight:700}
+.water .t span{font-family:var(--f-mono);font-weight:500;font-size:.85rem}
+.cups{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+.cup{width:30px;height:36px;border:2px solid var(--water);border-radius:3px 3px 9px 9px;background:transparent;padding:0}
+.cup.full{background:var(--water)}
+.wt-row{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--rule);margin-top:12px;padding-top:8px;font-weight:700}
+.wt-row span{font-family:var(--f-mono);font-weight:500;font-size:.9rem}
+.ingredients{border-top:10px solid var(--rule);margin-top:12px;padding-top:8px;font-size:.88rem;line-height:1.5}
+.ing-list{list-style:none;margin:6px 0 0;padding:0}
+.ing-list li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding-block:6px;border-bottom:1px dotted var(--line)}
+.ing-list li:last-child{border-bottom:0}
+.ing-list .nm{min-width:0;overflow-wrap:anywhere}
+.ing-list .nm small{display:block;color:var(--muted);font-size:.76rem}
+.ing-list .kc{font-family:var(--f-mono);font-weight:600}
+.del{border:0;background:none;color:var(--muted);width:32px;height:32px;border-radius:99px;font-size:1.1rem}
+.ing-list .mealhdr{display:block;font-size:.7rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-top:8px;border-bottom:0}
+.facts .foot{font-size:.7rem;color:var(--muted);margin:10px 0 0;line-height:1.4}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:12px;min-width:0}
+.card h3{margin:0;font-family:var(--f-display);font-weight:800;font-stretch:85%;font-size:1.15rem}
+.seg{display:flex;gap:3px;background:var(--fill);border:1px solid var(--line);border-radius:10px;padding:3px}
+.seg button{flex:1;border:0;background:none;padding:8px 4px;border-radius:7px;font-weight:600;font-size:.86rem;color:var(--muted);min-width:0}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.field{display:grid;gap:4px;min-width:0}
+.field label,.lab{font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+input[type=text],input[type=number],input[type=search],input[type=date],select{width:100%;border:1px solid var(--line);background:var(--fill);border-radius:10px;padding:11px 12px;font-size:16px;min-width:0}
+input:focus,select:focus{border-color:var(--accent);outline:none}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px}
+.results{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:10px;max-height:340px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.results li{border-bottom:1px solid var(--line)}
+.results li:last-child{border-bottom:0}
+.results .sec{padding:7px 12px 4px;font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--fill)}
+.results button{width:100%;border:0;background:none;text-align:left;padding:10px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px}
+.results button[aria-pressed="true"]{background:var(--accent-soft)}
+.results .rn{font-weight:600;overflow-wrap:anywhere}
+.results .rs{font-size:.78rem;color:var(--muted);overflow-wrap:anywhere}
+.results .rk{grid-row:1/3;grid-column:2;font-family:var(--f-mono);font-weight:600;align-self:center}
+.empty{padding:12px;color:var(--muted);font-size:.9rem;list-style:none}
+.preview{background:var(--fill);border-radius:10px;padding:10px 12px;font-size:.88rem;display:flex;flex-wrap:wrap;gap:6px 14px}
+.preview b{font-family:var(--f-mono)}
+.primary{border:0;background:var(--accent);color:var(--accent-ink);border-radius:12px;padding:14px 16px;font-weight:800;font-size:1rem;width:100%}
+.primary:disabled{opacity:.4;cursor:not-allowed}
+.ghost{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;font-weight:600;font-size:.9rem}
+.hint{font-size:.8rem;color:var(--muted);margin:0}
+.src{display:inline-block;font-size:.68rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 7px}
+.drop{display:grid;place-items:center;gap:6px;text-align:center;border:2px dashed var(--line);border-radius:12px;padding:18px 12px;background:var(--fill);cursor:pointer;position:relative}
+.drop strong{font-family:var(--f-display);font-stretch:85%;font-size:1.05rem}
+.drop input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.drop img{max-height:110px;border-radius:6px}
+.bc{display:inline-block;width:40px;height:26px;background:repeating-linear-gradient(90deg,currentColor 0 2px,transparent 2px 3px,currentColor 3px 4px,transparent 4px 6px)}
+.bigscan{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;border:0;border-radius:14px;padding:18px;background:var(--ink);color:var(--bg);font-weight:800;font-size:1.05rem}
+.bigscan .bc{width:34px;height:22px}
+.step-h{display:flex;align-items:baseline;gap:8px;font-weight:700}
+.step-h .k{font-family:var(--f-mono);font-size:.75rem;color:var(--accent);border:1px solid var(--accent);border-radius:99px;padding:0 7px}
+.status{font-size:.88rem;padding:9px 12px;border-radius:10px;background:var(--fill)}
+.status.ok{color:var(--good)} .status.err{color:var(--over)}
+.inline{display:flex;gap:8px}.inline input{flex:1;min-width:0}
+
+.scale{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px}
+.scale button{width:52px;height:52px;border-radius:99px;border:1px solid var(--line);background:var(--fill);font-size:1.6rem;font-weight:600;line-height:1}
+.scale .readout{text-align:center;min-width:0}
+.scale input{text-align:center;font-family:var(--f-display);font-weight:900;font-stretch:80%;font-size:3.4rem;line-height:1;border:0;background:none;padding:4px 0;width:100%}
+.scale input:focus{outline:none}
+.scale .u{font-size:.8rem;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--fill);border-radius:10px;padding:10px;text-align:center}
+.stat span{display:block;font-size:.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.stat b{font-family:var(--f-mono);font-size:1.05rem}
+.stat .dn{color:var(--good)} .stat .up{color:var(--over)}
+.log{list-style:none;margin:0;padding:0}
+.log li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding-block:9px;border-bottom:1px solid var(--line)}
+.log li:last-child{border-bottom:0}
+.log .dt{min-width:0;overflow-wrap:anywhere}
+.log .dt small{display:block;color:var(--muted);font-size:.76rem}
+.log .v{font-family:var(--f-mono);font-weight:600}
+
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--bar);backdrop-filter:saturate(1.6) blur(16px);-webkit-backdrop-filter:saturate(1.6) blur(16px);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+.tabbar nav{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+.tabbar button{border:0;background:none;display:grid;justify-items:center;gap:2px;padding:4px 0;font-size:.7rem;font-weight:600;color:var(--muted);height:var(--tabh)}
+.tabbar button svg{width:26px;height:26px}
+.tabbar button[aria-current="page"]{color:var(--accent)}
+
+dialog{border:0;padding:0;background:var(--surface);color:var(--ink);width:100%;max-width:520px;max-height:92vh;margin:auto auto 0;border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25)}
+@media (min-width:600px){dialog{margin:auto;border-radius:18px}}
+dialog::backdrop{background:rgba(8,12,10,.5)}
+dialog[open]{animation:up .25s ease-out}
+@keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
+.sheet{display:flex;flex-direction:column;max-height:92vh}
+.grab{width:38px;height:5px;border-radius:99px;background:var(--line);margin:8px auto 0}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px 8px}
+.sheet-h h3{margin:0;font-family:var(--f-display);font-weight:900;font-stretch:78%;font-size:1.6rem}
+.sheet-b{padding:4px 16px calc(18px + env(safe-area-inset-bottom,0px));overflow-y:auto;display:grid;gap:14px}
+.viewfinder{position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3;max-width:100%}
+.viewfinder video{width:100%;height:100%;object-fit:cover;display:block}
+.viewfinder .frame{position:absolute;left:10%;right:10%;top:30%;bottom:30%;border:3px solid rgba(255,255,255,.9);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
+.viewfinder .laser{position:absolute;left:12%;right:12%;top:50%;height:2px;background:#ff4d6d;box-shadow:0 0 8px #ff4d6d;animation:sweep 1.6s ease-in-out infinite alternate}
+@keyframes sweep{from{transform:translateY(-34px)}to{transform:translateY(34px)}}
+.viewfinder .msg{position:absolute;inset:auto 0 0 0;padding:10px 12px;color:#fff;font-size:.85rem;text-align:center;background:linear-gradient(transparent,rgba(0,0,0,.6))}
+.chartbox{overflow-x:auto}
+.chartbox svg{display:block;width:100%;height:auto}
+.chartbox text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.8rem;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.toast{position:fixed;left:50%;bottom:calc(var(--tabh) + 26px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:99px;font-size:.88rem;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;z-index:10;max-width:calc(100vw - 32px);text-align:center}
+.toast.show{opacity:1}
+.confirm{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+/* home: + button, coach card, inline weigh-in */
+.fab{position:fixed;right:max(16px,calc(50vw - 224px));bottom:calc(var(--tabh) + 26px + env(safe-area-inset-bottom,0px));z-index:6;border:0;border-radius:99px;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:1rem;padding:14px 20px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+.fab b{font-size:1.4rem;line-height:1;font-weight:700}
+.coach{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:10px}
+.coach h3{margin:0;font-family:var(--f-display);font-weight:800;font-stretch:85%;font-size:1.15rem}
+.coach p{margin:0;font-size:.92rem;line-height:1.45}
+.coach .tip{font-size:.85rem;color:var(--muted);border-left:3px solid var(--accent-soft);padding-left:10px}
+.coach .btns{display:flex;flex-wrap:wrap;gap:8px}
+.coach .btns .primary{width:auto;padding:11px 16px;font-size:.95rem}
+.coach .eyebrow{font-size:.68rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
+.feel{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.feel span{margin-right:4px}
+.chip{border:1px solid var(--line);background:var(--fill);border-radius:99px;padding:6px 12px;font-weight:600;font-size:.85rem}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.progress{height:6px;background:var(--line);border-radius:99px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.weighin{display:flex;gap:8px;align-items:center}
+.weighin input{flex:1;min-width:0;font-family:var(--f-mono);font-size:1.1rem}
+.weighin .u{color:var(--muted);font-weight:700;font-size:.85rem}
+.mealadd{border:0;background:none;color:var(--accent);font-weight:800;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;padding:0 0 0 8px}
+/* quick-log rows in search */
+.results li.qrow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
+.qadd{width:40px;height:40px;margin-right:8px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--accent);font-size:1.3rem;font-weight:700;line-height:1;padding:0!important;display:grid!important;place-items:center}
+.wide{width:100%}
+.recipebar{position:sticky;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:4;background:var(--ink);color:var(--bg);border-radius:var(--r);padding:12px 14px;display:grid;gap:8px;box-shadow:0 8px 20px rgba(0,0,0,.2)}
+.recipebar input{background:rgba(255,255,255,.12);border-color:transparent;color:inherit}
+.recipebar .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.recipebar .row>*{min-width:0}
+.recipebar b{font-family:var(--f-mono)}
+.recipebar button{border:0;border-radius:10px;padding:9px 12px;font-weight:700}
+.recipebar .save{background:var(--accent);color:var(--accent-ink)}
+.recipebar .cancel{background:transparent;color:inherit;text-decoration:underline}
+.stepper{display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:center}
+.stepper button{height:44px;border-radius:10px;border:1px solid var(--line);background:var(--fill);font-size:1.3rem;font-weight:700}
+.stepper input{text-align:center;font-family:var(--f-mono);font-size:1.1rem}
+.danger{color:var(--danger)!important}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:.92rem}
+.check input{width:20px;height:20px;margin-top:1px;accent-color:var(--accent)}
+.toast button{border:0;background:none;color:var(--accent-soft);font-weight:800;text-decoration:underline;margin-left:10px;padding:0}
+.toast.act{pointer-events:auto}
+.about{font-size:.78rem;color:var(--muted);line-height:1.5;margin:0}
+.about a{color:inherit}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- NUTRITION FACTS (home) -->
+  <section class="screen" id="scr-today" aria-label="Nutrition Facts">
+    <div class="top">
+      <div><span class="eyebrow">Plateful</span><h1 id="todayTitle">Today</h1></div>
+      <button class="icon" id="goalsBtn" aria-label="Goals and settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+    </div>
+    <div class="banner" id="installBanner" hidden>
+      <span>Install Plateful: tap the Share button, then <b>Add to Home Screen</b>.</span>
+      <button id="installDismiss">Got it</button>
+    </div>
+    <div class="datenav">
+      <button id="prevDay" aria-label="Previous day">&#8249;</button>
+      <div class="d" id="dateLabel">Today</div>
+      <button id="nextDay" aria-label="Next day">&#8250;</button>
+    </div>
+    <div id="coachArea" style="display:grid;gap:12px"></div>
+    <article class="facts" aria-label="Nutrition Facts">
+      <h2>Nutrition Facts</h2>
+      <div class="sub"><span id="factsDate">Today</span><span id="entryCount" class="num">0 items</span></div>
+      <div class="cal-row">
+        <div class="lbl">Calories<small id="leftLbl">remaining</small></div>
+        <div class="big num" id="calLeft">0</div>
+      </div>
+      <div class="meter" id="calMeter"><i style="width:0"></i></div>
+      <div class="eq">
+        <div>Goal<b id="calGoal">0</b></div>
+        <div>Eaten<b id="calEaten">0</b></div>
+        <div id="leftBox">Left<b id="calLeft2">0</b></div>
+      </div>
+      <div class="fact-hdr">% Daily Goal*</div>
+      <div class="macro"><div class="n">Total Fat<span id="fTxt">0g</span></div><div class="pct" id="fPct">0%</div><div class="bar"><i id="fBar" style="background:var(--fat);width:0"></i></div></div>
+      <div class="macro"><div class="n">Total Carbohydrate<span id="cTxt">0g</span></div><div class="pct" id="cPct">0%</div><div class="bar"><i id="cBar" style="background:var(--carbs);width:0"></i></div></div>
+      <div class="macro"><div class="n">Protein<span id="pTxt">0g</span></div><div class="pct" id="pPct">0%</div><div class="bar"><i id="pBar" style="background:var(--protein);width:0"></i></div></div>
+      <div class="water">
+        <div class="t">Water <span id="waterTxt">0 / 8 cups</span></div>
+        <div class="cups" id="cups" role="group" aria-label="Water cups, tap to fill"></div>
+      </div>
+      <div class="wt-row">Body Weight <span id="wtToday">Not logged</span></div>
+      <div class="ingredients">
+        <b>Ingredients:</b> <span id="ingSummary">nothing logged yet.</span>
+        <ul class="ing-list" id="ingList"></ul>
+      </div>
+      <p class="foot">*The % Daily Goal shows how much of your own daily target this day's food provides. Food values come from USDA FoodData Central and Open Food Facts; check packaging for exact amounts.</p>
+    </article>
+  </section>
+
+  <!-- ENTER MEAL -->
+  <section class="screen" id="scr-meal" aria-label="Enter meal" hidden>
+    <div class="top">
+      <div><span class="eyebrow" id="mealEyebrow">Today</span><h1 id="mealH1">Enter Meal</h1></div>
+      <button class="pill" data-plot="cal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M6 16v-5M11 16V7M16 16v-8M21 16V4"/></svg>Plot</button>
+    </div>
+    <div class="recipebar" id="recipeBar" hidden>
+      <div class="row" style="justify-content:space-between"><span>Building a recipe · <b id="rbCount">0</b> ingredients · <b id="rbKcal">0</b> kcal</span><button type="button" class="cancel" id="rbCancel">Cancel</button></div>
+      <div class="row"><input type="text" id="rbName" placeholder="Recipe name" style="flex:2"><input type="number" id="rbServ" min="1" step="1" value="4" inputmode="numeric" aria-label="Servings" style="flex:1;max-width:90px"><span style="font-size:.85rem">servings</span></div>
+      <div class="row"><span id="rbPer" style="flex:1;font-size:.85rem"></span><button type="button" class="save" id="rbSave">Save recipe</button></div>
+    </div>
+    <div class="card">
+      <div class="field"><span class="lab">Meal</span><div class="seg" id="mealSeg"></div></div>
+      <div class="field"><span class="lab">Add by</span>
+        <div class="seg" id="modeSeg">
+          <button type="button" data-mode="search" aria-pressed="true">Search</button>
+          <button type="button" data-mode="scan" aria-pressed="false">Scan</button>
+          <button type="button" data-mode="quick" aria-pressed="false">Quick</button>
+          <button type="button" data-mode="custom" aria-pressed="false">Custom</button>
+        </div>
+      </div>
+      <button type="button" class="ghost wide" id="repeatMeal" hidden></button>
+    </div>
+
+    <form class="card" id="paneSearch" autocomplete="off">
+      <div class="field"><label for="q">Food</label><input type="search" id="q" placeholder="Oatmeal, chicken breast, Cheerios…" enterkeyhint="search"></div>
+      <p class="hint" id="dbStatus">Loading the food database…</p>
+      <ul class="results" id="results"></ul>
+      <div class="grid2">
+        <div class="field"><label for="portion">Serving</label><select id="portion"></select></div>
+        <div class="field"><label for="qty">How many</label><input type="number" id="qty" min="0.25" step="any" value="1" inputmode="decimal"></div>
+      </div>
+      <div class="preview" id="preview">Pick a food to see its totals.</div>
+      <button type="submit" class="primary" id="addSearch" disabled>Add to Breakfast</button>
+    </form>
+
+    <form class="card" id="paneScan" hidden autocomplete="off">
+      <button type="button" class="bigscan" id="openScanner"><span class="bc" aria-hidden="true"></span>Scan a barcode</button>
+      <div class="inline"><input type="text" id="bcCode" inputmode="numeric" placeholder="Or type the number under the stripes"><button type="button" class="ghost" id="bcLook">Look up</button></div>
+      <div class="status" id="bcStatus" hidden></div>
+      <div id="labelStep" style="display:grid;gap:12px" hidden>
+        <div class="step-h"><span class="k">+</span>Not found. Add it from the label</div>
+        <label class="drop" id="lbDrop" for="lbFile">
+          <strong>Photograph the Nutrition Facts panel</strong>
+          <span class="hint" id="lbHint">The numbers are read for you. Correct anything before adding.</span>
+          <input type="file" id="lbFile" accept="image/*" capture="environment">
+        </label>
+        <div class="status" id="lbStatus" hidden></div>
+      </div>
+      <div id="scanForm" style="display:grid;gap:12px" hidden>
+        <div class="field"><label for="sName">Product</label><input type="text" id="sName"></div>
+        <div class="grid2">
+          <div class="field"><label for="sServ">Serving</label><input type="text" id="sServ"></div>
+          <div class="field"><label for="sKcal">Calories</label><input type="number" id="sKcal" min="0" step="1" inputmode="numeric"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label for="sP">Protein g</label><input type="number" id="sP" min="0" step="0.1" inputmode="decimal"></div>
+          <div class="field"><label for="sC">Carbs g</label><input type="number" id="sC" min="0" step="0.1" inputmode="decimal"></div>
+          <div class="field"><label for="sF">Fat g</label><input type="number" id="sF" min="0" step="0.1" inputmode="decimal"></div>
+        </div>
+        <div class="field"><label for="sQty">How many servings</label><input type="number" id="sQty" min="0.25" step="any" value="1" inputmode="decimal"></div>
+        <div class="preview" id="sPreview"></div>
+        <p class="hint">Saved to your barcode list, so your edits stick and the next scan is instant.</p>
+      </div>
+      <button type="submit" class="primary" id="addScan" disabled>Add to Breakfast</button>
+    </form>
+
+    <form class="card" id="paneQuick" hidden autocomplete="off">
+      <p class="hint">For restaurant meals and best guesses. A rough number logged beats a perfect one skipped.</p>
+      <div class="grid2">
+        <div class="field"><label for="qkKcal">Calories</label><input type="number" id="qkKcal" min="1" step="1" inputmode="numeric" placeholder="650"></div>
+        <div class="field"><label for="qkP">Protein g <span style="text-transform:none;letter-spacing:0">(optional)</span></label><input type="number" id="qkP" min="0" step="1" inputmode="numeric"></div>
+      </div>
+      <div class="field"><label for="qkName">What was it? <span style="text-transform:none;letter-spacing:0">(optional)</span></label><input type="text" id="qkName" placeholder="Burrito at Lupe's"></div>
+      <button type="submit" class="primary" id="addQuick" disabled>Add to Breakfast</button>
+    </form>
+
+    <form class="card" id="paneCustom" hidden autocomplete="off">
+      <div class="field"><label for="cName">Name</label><input type="text" id="cName" placeholder="Grandma's lentil soup"></div>
+      <div class="grid2">
+        <div class="field"><label for="cServ">Serving</label><input type="text" id="cServ" placeholder="1 bowl"></div>
+        <div class="field"><label for="cKcal">Calories</label><input type="number" id="cKcal" min="0" step="1" inputmode="numeric"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="cP">Protein g</label><input type="number" id="cP" min="0" step="0.1" inputmode="decimal"></div>
+        <div class="field"><label for="cC">Carbs g</label><input type="number" id="cC" min="0" step="0.1" inputmode="decimal"></div>
+        <div class="field"><label for="cF">Fat g</label><input type="number" id="cF" min="0" step="0.1" inputmode="decimal"></div>
+      </div>
+      <div class="field"><label for="cQty">How many servings</label><input type="number" id="cQty" min="0.25" step="any" value="1" inputmode="decimal"></div>
+      <p class="hint">Custom foods are saved and show up first in Search.</p>
+      <button type="submit" class="primary" id="addCustom" disabled>Add to Breakfast</button>
+      <button type="button" class="ghost wide" id="startRecipe">Build a recipe from several foods</button>
+    </form>
+
+    <div class="card">
+      <h3 id="mealListTitle">Breakfast so far</h3>
+      <ul class="log" id="mealList"></ul>
+      <div class="inline" id="saveMealRow" hidden>
+        <input type="text" id="saveMealName" placeholder="Name this meal">
+        <button type="button" class="ghost" id="saveMealBtn">Save meal</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ENTER WEIGHT -->
+  <section class="screen" id="scr-weight" aria-label="Enter weight" hidden>
+    <div class="top">
+      <div><span class="eyebrow">Body</span><h1>Enter Weight</h1></div>
+      <button class="pill" data-plot="wt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 3 8-8M15 7h5v5"/></svg>Plot</button>
+    </div>
+    <form class="card" id="wtForm">
+      <div class="scale">
+        <button type="button" id="wtMinus" aria-label="Decrease by 0.2">&minus;</button>
+        <div class="readout"><input type="number" id="wtVal" step="any" min="20" max="999" inputmode="decimal" aria-label="Weight"><span class="u" id="wtUnit">lb</span></div>
+        <button type="button" id="wtPlus" aria-label="Increase by 0.2">+</button>
+      </div>
+      <div class="field"><label for="wtDate">Date</label><input type="date" id="wtDate"></div>
+      <button type="submit" class="primary">Save weight</button>
+    </form>
+    <div class="stats" id="wtStats"></div>
+    <div class="card">
+      <h3>Recent weigh-ins</h3>
+      <ul class="log" id="wtList"></ul>
+    </div>
+  </section>
+</div>
+
+<button class="fab" id="fab" aria-label="Log food"><b aria-hidden="true">+</b>Log food</button>
+
+<div class="tabbar">
+  <nav aria-label="Main">
+    <button data-tab="today" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M4 8h16M7 12h10M7 15.5h10M7 19h6" stroke-width="1.6"/></svg>Nutrition Facts</button>
+    <button data-tab="meal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="7"/><circle cx="12" cy="13" r="3.5" stroke-width="1.5"/><path d="M12 2v2"/></svg>Enter Meal</button>
+    <button data-tab="weight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="4"/><path d="M8.5 10.5a5 5 0 0 1 7 0M12 10.5l1.5-1.8"/></svg>Enter Weight</button>
+  </nav>
+</div>
+
+<dialog id="scanDlg" aria-labelledby="scanTitle">
+  <div class="sheet">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="sheet-h"><h3 id="scanTitle">Scan barcode</h3><button type="button" class="icon" data-close aria-label="Close">&times;</button></div>
+    <div class="sheet-b">
+      <div class="viewfinder"><video id="video" playsinline muted autoplay></video><div class="frame"></div><div class="laser"></div><div class="msg" id="camMsg">Starting camera…</div></div>
+      <label class="drop" for="bcFile" style="padding:12px">
+        <strong>Use a photo instead</strong>
+        <span class="hint">If the camera won't focus, take a close photo of the barcode.</span>
+        <input type="file" id="bcFile" accept="image/*" capture="environment">
+      </label>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="plotDlg" aria-labelledby="plotTitle">
+  <div class="sheet">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="sheet-h"><h3 id="plotTitle">Calories</h3><button type="button" class="icon" data-close aria-label="Close">&times;</button></div>
+    <div class="sheet-b">
+      <div class="seg" id="rangeSeg">
+        <button type="button" data-range="7" aria-pressed="true">7D</button>
+        <button type="button" data-range="30" aria-pressed="false">30D</button>
+        <button type="button" data-range="60" aria-pressed="false">60D</button>
+        <button type="button" data-range="365" aria-pressed="false">1Y</button>
+        <button type="button" data-range="all" aria-pressed="false">All</button>
+      </div>
+      <div class="stats" id="plotStats"></div>
+      <div class="chartbox" id="plotChart"></div>
+      <div class="legend" id="plotLegend"></div>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="editDlg" aria-labelledby="editTitle">
+  <form class="sheet" id="editForm">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="sheet-h"><h3 id="editTitle">Edit</h3><button type="button" class="icon" data-close aria-label="Close">&times;</button></div>
+    <div class="sheet-b">
+      <p class="hint" id="editServing"></p>
+      <div class="field"><span class="lab">How many servings</span>
+        <div class="stepper"><button type="button" id="edMinus" aria-label="Less">&minus;</button><input type="number" id="edQty" min="0.25" step="any" inputmode="decimal" aria-label="Servings"><button type="button" id="edPlus" aria-label="More">+</button></div>
+      </div>
+      <div class="field"><span class="lab">Meal</span><div class="seg" id="edMeal"></div></div>
+      <div class="preview" id="edPreview"></div>
+      <button type="submit" class="primary">Save</button>
+      <button type="button" class="ghost wide danger" id="edDelete">Remove from log</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="setupDlg" aria-labelledby="setupTitle">
+  <form class="sheet" id="setupForm" autocomplete="off">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="sheet-h"><h3 id="setupTitle">Your plan</h3><button type="button" class="icon" data-close aria-label="Close">&times;</button></div>
+    <div class="sheet-b">
+      <div class="field"><span class="lab">Goal</span>
+        <div class="seg" id="suGoal"><button type="button" data-v="lose">Lose weight</button><button type="button" data-v="maintain">Maintain</button><button type="button" data-v="gain">Gain</button></div>
+      </div>
+      <div class="field" id="suPaceField"><span class="lab">Pace</span>
+        <div class="seg" id="suPace"><button type="button" data-v="gentle">Gentle</button><button type="button" data-v="steady">Steady</button><button type="button" data-v="faster">Faster</button></div>
+        <p class="hint" id="suPaceHint"></p>
+      </div>
+      <div class="field"><span class="lab">Sex (for the starting estimate)</span>
+        <div class="seg" id="suSex"><button type="button" data-v="f">Female</button><button type="button" data-v="m">Male</button></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="suAge">Age</label><input type="number" id="suAge" min="18" max="100" inputmode="numeric"></div>
+        <div class="field"><label for="suWt">Weight (<span class="suUnit">lb</span>)</label><input type="number" id="suWt" step="0.1" inputmode="decimal"></div>
+      </div>
+      <div class="grid2" id="suHtImp">
+        <div class="field"><label for="suFt">Height ft</label><input type="number" id="suFt" min="3" max="8" inputmode="numeric"></div>
+        <div class="field"><label for="suIn">in</label><input type="number" id="suIn" min="0" max="11" inputmode="numeric"></div>
+      </div>
+      <div class="field" id="suHtMet" hidden><label for="suCm">Height (cm)</label><input type="number" id="suCm" min="120" max="230" inputmode="numeric"></div>
+      <div class="field"><label for="suAct">Day-to-day activity</label>
+        <select id="suAct"><option value="1.2">Mostly sitting</option><option value="1.375">Lightly active (some walking)</option><option value="1.55">Active (on my feet, regular exercise)</option><option value="1.725">Very active (physical job or hard training)</option></select>
+      </div>
+      <div class="field" id="suGoalWtField"><label for="suGoalWt">Goal weight (<span class="suUnit">lb</span>, optional)</label><input type="number" id="suGoalWt" step="0.1" inputmode="decimal"></div>
+      <div class="field"><span class="lab">Weight-loss targets are turned off if any of these apply</span>
+        <label class="check"><input type="checkbox" id="suPreg"> Pregnant or breastfeeding</label>
+        <label class="check"><input type="checkbox" id="suU18"> Under 18</label>
+        <label class="check"><input type="checkbox" id="suEd"> Have had an eating disorder</label>
+      </div>
+      <div class="preview" id="suPreview" style="display:block"></div>
+      <button type="submit" class="primary" id="suSave">Start my plan</button>
+      <p class="about">Plateful learns your real calorie burn from your weigh-ins and food log, and adjusts your target once a week. It never sets a target below 1,200 kcal (women) or 1,500 kcal (men), or a pace faster than 1% of your weight per week. It isn't medical advice; check with a doctor if you have a health condition or take weight-loss medication.</p>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="goalDlg" aria-labelledby="goalTitle">
+  <form class="sheet" id="goalForm">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="sheet-h"><h3 id="goalTitle">Goals</h3><button type="button" class="icon" data-close aria-label="Close">&times;</button></div>
+    <div class="sheet-b">
+      <button type="button" class="ghost wide" id="editPlan">Set up your plan</button>
+      <div class="field"><label for="gK">Calories per day</label><input type="number" id="gK" min="800" step="10" inputmode="numeric">
+        <label class="check" id="gAutoRow"><input type="checkbox" id="gAuto"> Let my plan adjust this each week</label>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="gP">Protein g</label><input type="number" id="gP" min="0" step="1" inputmode="numeric"></div>
+        <div class="field"><label for="gC">Carbs g</label><input type="number" id="gC" min="0" step="1" inputmode="numeric"></div>
+        <div class="field"><label for="gF">Fat g</label><input type="number" id="gF" min="0" step="1" inputmode="numeric"></div>
+      </div>
+      <p class="hint" id="macroCheck"></p>
+      <div class="grid2">
+        <div class="field"><label for="gW">Water cups</label><input type="number" id="gW" min="1" max="16" step="1" inputmode="numeric"></div>
+        <div class="field"><label for="gUnit">Weight unit</label><select id="gUnit"><option value="lb">Pounds (lb)</option><option value="kg">Kilograms (kg)</option></select></div>
+        <div class="field"><label for="gWt">Goal weight</label><input type="number" id="gWt" step="0.1" min="0" inputmode="decimal" placeholder="Optional"></div>
+      </div>
+      <button type="submit" class="primary">Save goals</button>
+      <div class="field"><span class="lab">Your data</span>
+        <div class="confirm">
+          <button type="button" class="ghost" id="exportBtn">Export backup</button>
+          <label class="ghost" for="importFile" style="cursor:pointer">Import backup<input type="file" id="importFile" accept="application/json,.json" hidden></label>
+        </div>
+        <p class="hint">Your log is stored on this device only. Export a backup before switching phones.</p>
+      </div>
+      <div class="confirm" id="resetZone"></div>
+      <p class="about" id="aboutData"></p>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="/vendor/zxing.min.js" defer></script>
+<script src="/coach.js?v=__BUILD__" defer></script>
+<script src="/app.js?v=__BUILD__" defer></script>
+</body>
+</html>
